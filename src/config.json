@@ -1,0 +1,7 @@
+{
+  "URL" : "//192.168.234.237:5432",
+  "USER" : "postgres",
+  "PASSWORD" : "sa",
+  "DB_Global_Marine" : "globaldb",
+  "DB_Global_Module" : "ContractVersionControl"
+}
