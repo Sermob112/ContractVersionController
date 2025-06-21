@@ -2,8 +2,6 @@ package Parser.URLParser;
 
 import Webdriver.Implementations.RandomUserAgent;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import Webdriver.Implementations.ChromeDriverSetup;
 public class WebDriverFactory {
 

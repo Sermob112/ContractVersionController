@@ -1,7 +1,11 @@
 package org.example;
 
 import Database.Hooks.HibernateUtil;
+
+import Parser.URLParser.JournalLinksExtractorMultithreaded;
 import Parser.URLParser.ParseUrls;
+
+import Parser.URLParser.ParseUrlsMultithreaded;
 import Parser.URLParser.VersionUrlParser;
 import Webdriver.Implementations.ChromeDriverSetup;
 import Webdriver.Implementations.RandomUserAgent;
@@ -31,10 +35,17 @@ public class Main {
             return; // Завершаем работу приложения, если не удалось инициализировать Hibernate
         }
 
-        String userAgent = RandomUserAgent.getRandomUserAgent();
-        ChromeDriverSetup driverSetup = new ChromeDriverSetup(userAgent);
-        WebDriver driver = driverSetup.setupDriver();
+        ParseUrlsMultithreaded parser = new ParseUrlsMultithreaded(
+                "https://zakupki.gov.ru/epz/contract/search/results.html?morphology=on&search-filter=Дате+размещения&fz44=on&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&budgetLevelsIdNameHidden=%7B%7D&okpd2Ids=8874076&okpd2IdsCodes=30.1&sortBy=UPDATE_DATE&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false",
+                "contract_links.txt",
+                4   // количество потоков
+        );
+        parser.processAllPagesMultithreaded();
 
+//        String userAgent = RandomUserAgent.getRandomUserAgent();
+//        ChromeDriverSetup driverSetup = new ChromeDriverSetup(userAgent);
+//        WebDriver driver = driverSetup.setupDriver();
+//
 //        try {
 //            ParseUrls parser = new ParseUrls(driver);
 //
@@ -59,10 +70,16 @@ public class Main {
 //        } finally {
 //            driver.quit();
 //        }
+//
+//        VersionUrlParser parser = new VersionUrlParser(); // null, т.к. WebDriver в потоках
+//        parser.processAllContractLinksMultithreaded(4);
 
-        VersionUrlParser parser = new VersionUrlParser(); // null, т.к. WebDriver в потоках
-        parser.processAllContractLinksMultithreaded(4);
-
+//        JournalLinksExtractorMultithreaded extractor = new JournalLinksExtractorMultithreaded(
+//                "event_journal_links.txt",
+//                "contract_detail_links.txt",
+//                4 // количество потоков
+//        );
+//        extractor.processAllJournalPages();
 
 
 //        SwingUtilities.invokeLater(() -> {

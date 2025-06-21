@@ -66,7 +66,7 @@ public class ParseUrls {
     /**
      * Заменяет параметр pageNumber в URL или добавляет его, если его нет.
      */
-    private String replacePageNumberInUrl(String url, int newPageNumber) {
+    public String replacePageNumberInUrl(String url, int newPageNumber) {
         if (url.contains("pageNumber=")) {
             // Если pageNumber уже есть, заменяем его значение
             return url.replaceAll("pageNumber=\\d+", "pageNumber=" + newPageNumber);
@@ -76,7 +76,7 @@ public class ParseUrls {
         }
     }
 
-    private int getTotalRecordsCount() {
+    public int getTotalRecordsCount() {
         try {
             WebElement totalElement = wait.until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector("div.d-flex div.search-results__total")
@@ -93,7 +93,7 @@ public class ParseUrls {
         }
     }
 
-    private List<String> parseContractLinksFromPage(String pageUrl) {
+    public List<String> parseContractLinksFromPage(String pageUrl) {
         List<String> links = new ArrayList<>();
 
         try {
@@ -120,32 +120,28 @@ public class ParseUrls {
         return links;
     }
 
-    public void saveUniqueLinksToFile(List<String> links) {
+    public void saveUniqueLinksToFile(List<String> links, String filePath) {
         try {
-            // Создаём файл если его нет
-            Path path = Paths.get(outputFilePath);
+            Path path = Paths.get(filePath);
             if (!Files.exists(path)) {
                 Files.createFile(path);
             }
 
-            // Читаем существующие ссылки из файла
             Set<String> existingLinks = new HashSet<>(Files.readAllLines(path));
-
-            // Фильтруем только новые уникальные ссылки
             Set<String> newUniqueLinks = new HashSet<>(links);
             newUniqueLinks.removeAll(existingLinks);
 
-            // Дописываем новые ссылки в файл
             if (!newUniqueLinks.isEmpty()) {
                 Files.write(path, newUniqueLinks, StandardOpenOption.APPEND);
-                System.out.println("Added " + newUniqueLinks.size() + " new links to file");
+                System.out.println("Добавлено " + newUniqueLinks.size() + " новых ссылок в файл.");
             } else {
-                System.out.println("No new links to add");
+                System.out.println("Нет новых ссылок для добавления.");
             }
         } catch (IOException e) {
-            System.err.println("Error saving links to file: " + e.getMessage());
+            System.err.println("Ошибка при сохранении ссылок в файл: " + e.getMessage());
         }
     }
+
 
 
 }
