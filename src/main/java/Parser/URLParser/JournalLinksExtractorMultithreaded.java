@@ -68,7 +68,7 @@ public class JournalLinksExtractorMultithreaded {
                     String href = linkElement.getAttribute("href");
 
                     if (href != null && !href.trim().isEmpty()) {
-                        resultSet.add("https://zakupki.gov.ru" + href);
+                        resultSet.add(href);
                         System.out.println("[✓] " + href);
                     }
                 } catch (Exception e) {

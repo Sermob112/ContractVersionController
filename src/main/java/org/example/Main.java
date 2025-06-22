@@ -2,6 +2,9 @@ package org.example;
 
 import Database.Hooks.HibernateUtil;
 
+import Parser.ContractParser;
+import Parser.DataHooks.ContractExtractor;
+import Parser.DataHooks.ContractUploader;
 import Parser.URLParser.JournalLinksExtractorMultithreaded;
 import Parser.URLParser.ParseUrls;
 
@@ -22,65 +25,71 @@ import java.util.List;
 public class Main {
     public static void main(String[] args) {
 
-        try {
-            // Можно указать путь к конфигурационному файлу, если он отличается от стандартного
-            // HibernateUtil.initialize("путь/к/вашему/config.json");
 
-            // Получаем SessionFactory (инициализация произойдет автоматически)
+
+        try {
+            // Инициализация Hibernate
+            initializeHibernate();
+
+            // Создаем и запускаем парсер контрактов
+            ContractParser contractParser = new ContractParser();
+            contractParser.fullParseProcess();
+
+        } catch (Exception e) {
+            System.err.println("Ошибка в основном потоке:");
+            e.printStackTrace();
+        }
+    }
+
+    private static void initializeHibernate() {
+        try {
             HibernateUtil.getSessionFactory();
             System.out.println("Hibernate успешно инициализирован");
         } catch (Exception e) {
             System.err.println("Ошибка инициализации Hibernate:");
             e.printStackTrace();
-            return; // Завершаем работу приложения, если не удалось инициализировать Hibernate
+            throw new RuntimeException("Не удалось инициализировать Hibernate", e);
         }
-
-        ParseUrlsMultithreaded parser = new ParseUrlsMultithreaded(
-                "https://zakupki.gov.ru/epz/contract/search/results.html?morphology=on&search-filter=Дате+размещения&fz44=on&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&budgetLevelsIdNameHidden=%7B%7D&okpd2Ids=8874076&okpd2IdsCodes=30.1&sortBy=UPDATE_DATE&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false",
-                "contract_links.txt",
-                4   // количество потоков
-        );
-        parser.processAllPagesMultithreaded();
-
-//        String userAgent = RandomUserAgent.getRandomUserAgent();
-//        ChromeDriverSetup driverSetup = new ChromeDriverSetup(userAgent);
-//        WebDriver driver = driverSetup.setupDriver();
-//
+    }
 //        try {
-//            ParseUrls parser = new ParseUrls(driver);
+//            // Можно указать путь к конфигурационному файлу, если он отличается от стандартного
+//            // HibernateUtil.initialize("путь/к/вашему/config.json");
 //
-//            // Парсим ссылки с реального сайта
-//            String targetUrl = "https://zakupki.gov.ru/epz/contract/search/results.html?morphology=on&search-filter=Дате+размещения&fz44=on&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&budgetLevelsIdNameHidden=%7B%7D&okpd2Ids=8874076&okpd2IdsCodes=30.1&sortBy=UPDATE_DATE&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false";
-//            List<String> contractLinks = parser.parseAllContractLinks(targetUrl);
-//            parser.saveUniqueLinksToFile(contractLinks);
-//
-//            // Читаем и выводим количество уникальных ссылок с обработкой исключений
-//            try {
-//                Path path = Paths.get("contract_links.txt");
-//                if (Files.exists(path)) {
-//                    int uniqueLinksCount = Files.readAllLines(path).size();
-//                    System.out.println("Processing completed. Total unique links: " + uniqueLinksCount);
-//                } else {
-//                    System.out.println("Processing completed. File not created (no new links)");
-//                }
-//            } catch (IOException e) {
-//                System.err.println("Error reading links file: " + e.getMessage());
-//            }
-//
-//        } finally {
-//            driver.quit();
+//            // Получаем SessionFactory (инициализация произойдет автоматически)
+//            HibernateUtil.getSessionFactory();
+//            System.out.println("Hibernate успешно инициализирован");
+//        } catch (Exception e) {
+//            System.err.println("Ошибка инициализации Hibernate:");
+//            e.printStackTrace();
+//            return; // Завершаем работу приложения, если не удалось инициализировать Hibernate
 //        }
+//
+//        ParseUrlsMultithreaded parser = new ParseUrlsMultithreaded(
+//                "https://zakupki.gov.ru/epz/contract/search/results.html?morphology=on&search-filter=Дате+размещения&fz44=on&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&budgetLevelsIdNameHidden=%7B%7D&okpd2Ids=8874076&okpd2IdsCodes=30.1&sortBy=UPDATE_DATE&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false",
+//                "contract_links.txt",
+//                4   // количество потоков
+//        );
+//        parser.processAllPagesMultithreaded();
+//
 //
 //        VersionUrlParser parser = new VersionUrlParser(); // null, т.к. WebDriver в потоках
 //        parser.processAllContractLinksMultithreaded(4);
-
+//
 //        JournalLinksExtractorMultithreaded extractor = new JournalLinksExtractorMultithreaded(
 //                "event_journal_links.txt",
 //                "contract_detail_links.txt",
 //                4 // количество потоков
 //        );
 //        extractor.processAllJournalPages();
-
+//
+//        ContractExtractor extractor = new ContractExtractor(4); // 5 потоков
+//        extractor.extractAllContracts();
+//        ContractUploader uploader = new ContractUploader();
+//        try {
+//            uploader.uploadContracts(extractor.getContractsData());
+//        } finally {
+//            uploader.close();
+//        }
 
 //        SwingUtilities.invokeLater(() -> {
 //            // Создаем экземпляр вашей формы
@@ -95,4 +104,3 @@ public class Main {
 //            frame.setVisible(true);
 //        });
     }
-}
