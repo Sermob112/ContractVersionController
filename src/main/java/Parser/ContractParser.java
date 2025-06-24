@@ -5,7 +5,12 @@ package Parser;
 import Database.Hooks.DataBaseServices;
 import Database.Models.Contract;
 import Parser.DataHooks.ContractExtractor;
+import Parser.DataHooks.ContractUploader;
 import Parser.URLParser.*;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityTransaction;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -15,19 +20,23 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ContractParser {
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
 
+
     public void fullParseProcess() {
+
         try {
-            // 1. Парсинг списка контрактов (многостраничный)
-            parseContractLinks();
-
-            // 2. Парсинг версий контрактов
-            parseContractVersions();
-
-            // 3. Извлечение ссылок из журналов
-            extractJournalLinks();
+//            // 1. Парсинг списка контрактов (многостраничный)
+//            parseContractLinks();
+//
+//            // 2. Парсинг версий контрактов
+//            parseContractVersions();
+//
+//            // 3. Извлечение ссылок из журналов
+//            extractJournalLinks();
 
             // 4. Парсинг деталей контрактов и сохранение в БД
             parseAndSaveContractDetails();
+
+
 
         } catch (Exception e) {
             System.err.println("Ошибка в процессе парсинга:");
@@ -81,58 +90,12 @@ public class ContractParser {
     }
 
     private List<Contract> convertToContractEntities(Map<String, Map<String, String>> contractsData) {
-        List<Contract> contracts = new ArrayList<>();
+        ContractUploader contractUploader = new ContractUploader();
+        List<Contract> contracts = contractUploader.uploadContracts(contractsData); // передаем весь Map
 
-        for (Map.Entry<String, Map<String, String>> entry : contractsData.entrySet()) {
-            try {
-                Contract contract = createContractFromData(entry.getKey(), entry.getValue());
-                contracts.add(contract);
-            } catch (Exception e) {
-                System.err.println("Ошибка при обработке контракта " + entry.getKey() + ": " + e.getMessage());
-            }
-        }
         return contracts;
     }
 
-    private Contract createContractFromData(String contractUrl, Map<String, String> contractInfo) {
-        Contract contract = new Contract();
 
-        // Основная информация
-        contract.setNoticeNumber(contractUrl);
-        contract.setContractStatus(contractInfo.get("Статус"));
-        contract.setCustomer(contractInfo.get("Заказчик"));
-        contract.setContractNumber(contractInfo.get("Номер контракта"));
-        contract.setPurchaseObjects(contractInfo.get("Объекты закупки"));
 
-        // Обработка цены контракта
-        String priceStr = contractInfo.get("Цена контракта");
-        if (priceStr != null && !priceStr.isEmpty()) {
-            priceStr = priceStr.replaceAll("[^\\d,]", "").replace(",", ".");
-            contract.setContractPrice(Double.parseDouble(priceStr));
-        }
-
-        // Обработка дат
-        contract.setContractConclusion(parseDate(contractInfo.get("Дата заключения")));
-        contract.setExecutionPeriod(parseDate(contractInfo.get("Срок исполнения")));
-        contract.setPostedDate(parseDate(contractInfo.get("Дата размещения")));
-        contract.setUpdatedDate(parseDate(contractInfo.get("Дата обновления")));
-
-        // Системная информация
-        contract.setVersion("1.0");
-        contract.setLastParsingUpdate(new Date());
-
-        return contract;
-    }
-
-    private Date parseDate(String dateStr) {
-        if (dateStr == null || dateStr.isEmpty()) {
-            return null;
-        }
-        try {
-            return dateFormat.parse(dateStr);
-        } catch (ParseException e) {
-            System.err.println("Ошибка парсинга даты: " + dateStr);
-            return null;
-        }
-    }
 }

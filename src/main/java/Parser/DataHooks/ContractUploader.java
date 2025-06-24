@@ -6,23 +6,23 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 
 public class ContractUploader {
 
-    private final EntityManagerFactory emf;
+
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
 
     public ContractUploader() {
-        this.emf = Persistence.createEntityManagerFactory("your-persistence-unit-name");
+
     }
 
-    public void uploadContracts(Map<String, Map<String, String>> contractsData) {
-        EntityManager em = emf.createEntityManager();
+    public List<Contract> uploadContracts(Map<String, Map<String, String>> contractsData) {
 
-        try {
-            em.getTransaction().begin();
+        List<Contract> contracts = new ArrayList<>();
 
             for (Map.Entry<String, Map<String, String>> entry : contractsData.entrySet()) {
                 String contractUrl = entry.getKey();
@@ -33,7 +33,7 @@ public class ContractUploader {
                 // Заполнение полей контракта
                 try {
                     // Основная информация
-                    contract.setNoticeNumber(contractUrl); // Используем URL как номер извещения
+                    contract.setNoticeNumber(contractInfo.get("Реестровый номер")); // Используем URL как номер извещения
                     contract.setContractStatus(contractInfo.get("Статус"));
                     contract.setCustomer(contractInfo.get("Заказчик"));
                     contract.setContractNumber(contractInfo.get("Номер контракта"));
@@ -49,15 +49,17 @@ public class ContractUploader {
                     // Обработка дат
                     contract.setContractConclusion(parseDate(contractInfo.get("Дата заключения")));
                     contract.setExecutionPeriod(parseDate(contractInfo.get("Срок исполнения")));
+
                     contract.setPostedDate(parseDate(contractInfo.get("Дата размещения")));
                     contract.setUpdatedDate(parseDate(contractInfo.get("Дата обновления")));
 
                     // Системная информация
-                    contract.setVersion("1.0");
+                    contract.setVersion(contractInfo.get("Версия контракта"));
                     contract.setLastParsingUpdate(new Date());
 
                     // Сохранение или обновление контракта
-                    em.persist(contract);
+
+                    contracts.add(contract);
 
                 } catch (Exception e) {
                     System.err.println("Ошибка при обработке контракта " + contractUrl + ": " + e.getMessage());
@@ -65,17 +67,7 @@ public class ContractUploader {
                 }
             }
 
-            em.getTransaction().commit();
-            System.out.println("Успешно загружено контрактов: " + contractsData.size());
-
-        } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
-            System.err.println("Ошибка при загрузке контрактов: " + e.getMessage());
-        } finally {
-            em.close();
-        }
+        return contracts;
     }
 
     private Date parseDate(String dateStr) {
@@ -90,9 +82,5 @@ public class ContractUploader {
         }
     }
 
-    public void close() {
-        if (emf != null && emf.isOpen()) {
-            emf.close();
-        }
-    }
+
 }

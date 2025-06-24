@@ -11,6 +11,8 @@ import java.nio.file.*;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class ContractExtractor {
@@ -55,35 +57,88 @@ public class ContractExtractor {
                             .executeScript("return document.readyState").equals("complete"));
 
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+            try {
+                // Ищем версию контракта
+                WebElement versionSpan = driver.findElement(By.cssSelector("span.navBreadcrumb__text > span[data-tooltip]"));
+                String contractVersion = versionSpan.getText().trim();
+                contractInfo.put("Версия контракта", contractVersion);
+            } catch (NoSuchElementException e) {
+                System.err.println("Не удалось извлечь версию контракта: " + contractUrl);
+            }
 
+            try {
+                WebElement reestrElement = driver.findElement(By.cssSelector("span.cardMainInfo__purchaseLink a"));
+                String href = reestrElement.getAttribute("href");
+
+                // Извлекаем значение параметра reestrNumber
+                String reestrNumber = "";
+                Pattern pattern = Pattern.compile("reestrNumber=([0-9]+)");
+                Matcher matcher = pattern.matcher(href);
+                if (matcher.find()) {
+                    reestrNumber = matcher.group(1);
+                    contractInfo.put("Реестровый номер", reestrNumber);
+                }
+            } catch (NoSuchElementException e) {
+                System.err.println("Не удалось извлечь реестровый номер: " + contractUrl);
+            }
             try {
                 WebElement mainInfoCard = wait.until(ExpectedConditions.presenceOfElementLocated(
                         By.cssSelector("div.cardMainInfo.row")));
 
-                // Извлечение основных данных с обработкой возможных ошибок для каждого поля
-                safelyPutContractInfo(contractInfo, "Номер контракта", mainInfoCard, "span.cardMainInfo__content");
-                safelyPutContractInfo(contractInfo, "Статус", mainInfoCard, "span.cardMainInfo__state");
-                safelyPutContractInfo(contractInfo, "Заказчик", mainInfoCard, "span.cardMainInfo__content a");
-                safelyPutContractInfo(contractInfo, "Цена контракта", mainInfoCard, "span.cardMainInfo__content.cost");
-                safelyPutContractInfo(contractInfo, "Объекты закупки", mainInfoCard, "span.text-break.d-block");
+                List<WebElement> sections = mainInfoCard.findElements(By.cssSelector(".cardMainInfo__section"));
 
-                // Даты
-                safelyPutContractInfo(contractInfo, "Дата заключения", mainInfoCard,
-                        "div.cardMainInfo__section:nth-of-type(1) span.cardMainInfo__content");
-                safelyPutContractInfo(contractInfo, "Срок исполнения", mainInfoCard,
-                        "div.cardMainInfo__section:nth-of-type(2) span.cardMainInfo__content");
+                for (WebElement section : sections) {
+                    String title = "";
+                    String value = "";
 
-                // Дополнительные поля, которые могут отсутствовать
-                safelyPutContractInfo(contractInfo, "Дата размещения", mainInfoCard,
-                        "div.cardMainInfo__section:nth-of-type(3) span.cardMainInfo__content");
-                safelyPutContractInfo(contractInfo, "Дата обновления", mainInfoCard,
-                        "div.cardMainInfo__section:nth-of-type(4) span.cardMainInfo__content");
+                    try {
+                        title = section.findElement(By.cssSelector(".cardMainInfo__title")).getText().trim();
+                        value = section.findElement(By.cssSelector(".cardMainInfo__content")).getText().trim();
+                    } catch (NoSuchElementException ignore) {
+                    }
+
+
+                    switch (title) {
+                        case "Контракт":
+                            contractInfo.put("Номер контракта", value);
+                            break;
+                        case "Заказчик":
+                            contractInfo.put("Заказчик", value);
+                            break;
+                        case "Объекты закупки":
+                            contractInfo.put("Объекты закупки", value);
+                            break;
+                        case "Заключение контракта":
+                            contractInfo.put("Дата заключения", value);
+                            break;
+                        case "Срок исполнения":
+                            contractInfo.put("Срок исполнения", value);
+                            break;
+                        case "Размещен контракт в реестре контрактов":
+                            contractInfo.put("Дата размещения", value);
+                            break;
+                        case "Обновлен контракт в реестре контрактов":
+                            contractInfo.put("Дата обновления", value);
+                            break;
+                    }
+                }
+
+                // Отдельно статус
+                try {
+                    WebElement status = mainInfoCard.findElement(By.cssSelector("span.cardMainInfo__state"));
+                    contractInfo.put("Статус", status.getText().trim());
+                } catch (NoSuchElementException ignore) {}
+
+                // Отдельно цена контракта
+                try {
+                    WebElement price = mainInfoCard.findElement(By.cssSelector("span.cardMainInfo__content.cost"));
+                    contractInfo.put("Цена контракта", price.getText().trim());
+                } catch (NoSuchElementException ignore) {}
 
             } catch (TimeoutException e) {
                 System.err.println("Основная карточка контракта не найдена: " + contractUrl);
             }
 
-            // Сохраняем данные по URL контракта, даже если собраны не все поля
             if (!contractInfo.isEmpty()) {
                 contractsData.put(contractUrl, contractInfo);
                 System.out.println("Обработан контракт: " + contractUrl);
@@ -98,6 +153,8 @@ public class ContractExtractor {
             driver.quit();
         }
     }
+
+
 
     // Вспомогательный метод для безопасного извлечения данных
     private void safelyPutContractInfo(Map<String, String> contractInfo, String fieldName,
