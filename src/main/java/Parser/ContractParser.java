@@ -12,26 +12,37 @@ import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
 
+import javax.swing.*;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ContractParser {
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
+    private final JProgressBar progressBar;
+    private final JLabel statusParser;// поле в ContractParser
 
-
+    public ContractParser(JProgressBar progressBar, JLabel statusParser) {
+        this.progressBar = progressBar;
+        this.statusParser = statusParser;
+    }
     public void fullParseProcess() {
 
         try {
-//            // 1. Парсинг списка контрактов (многостраничный)
-//            parseContractLinks();
+
+            // 1. Парсинг списка контрактов (многостраничный)
+            boolean linksParsed = parseContractLinks(); // теперь получаем результат
+
+            if (linksParsed) {
+                // Если парсили ссылки, значит нужно заново парсить версии
+                // 2. Парсинг версий контрактов
+                parseContractVersions();
+            } else {
+                updateStatus("Пропуск парсинга версий контрактов (ссылки не обновлялись)");
+            }
 //
-//            // 2. Парсинг версий контрактов
-//            parseContractVersions();
-//
-//            // 3. Извлечение ссылок из журналов
-//            extractJournalLinks();
+            // 3. Извлечение ссылок из журналов
+            extractJournalLinks();
 
             // 4. Парсинг деталей контрактов и сохранение в БД
             parseAndSaveContractDetails();
@@ -39,42 +50,49 @@ public class ContractParser {
 
 
         } catch (Exception e) {
-            System.err.println("Ошибка в процессе парсинга:");
+            updateStatus("Ошибка в процессе парсинга:");
             e.printStackTrace();
         }
     }
 
-    private void parseContractLinks() {
-        System.out.println("Начало парсинга списка контрактов...");
+    private boolean parseContractLinks() {
+        updateStatus("Начало парсинга списка контрактов...");
         ParseUrlsMultithreaded parser = new ParseUrlsMultithreaded(
-                "https://zakupki.gov.ru/epz/contract/search/results.html?morphology=on&search-filter=Дате+размещения&fz44=on&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&budgetLevelsIdNameHidden=%7B%7D&okpd2Ids=8874076&okpd2IdsCodes=30.1&sortBy=UPDATE_DATE&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false",
+                "https://zakupki.gov.ru/epz/contract/search/results.html?morphology=on&search-filter=Дате+размещения&fz44=on&contractStageList_0=on&contractStageList_1=on&contractStageList_2=on&contractStageList_3=on&contractStageList=0%2C1%2C2%2C3&budgetLevelsIdNameHidden=%7B%7D&okpd2Ids=8874076&okpd2IdsCodes=30.1&sortBy=UPDATE_DATE&pageNumber=1&sortDirection=false&recordsPerPage=_50&showLotsInfoHidden=false", // твоя ссылка
                 "contract_links.txt",
-                4
+                4,
+                progressBar,
+                statusParser
         );
-        parser.processAllPagesMultithreaded();
-        System.out.println("Парсинг списка контрактов завершен");
+        boolean parsed = parser.processAllPagesMultithreaded();
+        if (parsed) {
+            updateStatus("Парсинг списка контрактов завершен");
+        } else {
+            updateStatus("Парсинг списка контрактов пропущен (актуальные данные уже есть)");
+        }
+        return parsed;
     }
 
     private void parseContractVersions() {
-        System.out.println("Начало парсинга версий контрактов...");
+        updateStatus("Начало парсинга версий контрактов...");
         VersionUrlParser parser = new VersionUrlParser();
         parser.processAllContractLinksMultithreaded(4);
-        System.out.println("Парсинг версий контрактов завершен");
+        updateStatus("Парсинг версий контрактов завершен");
     }
 
     private void extractJournalLinks() {
-        System.out.println("Начало извлечения ссылок из журналов...");
+        updateStatus("Начало извлечения ссылок из журналов...");
         JournalLinksExtractorMultithreaded extractor = new JournalLinksExtractorMultithreaded(
                 "event_journal_links.txt",
                 "contract_detail_links.txt",
                 4
         );
         extractor.processAllJournalPages();
-        System.out.println("Извлечение ссылок из журналов завершено");
+        updateStatus("Извлечение ссылок из журналов завершено");
     }
 
     private void parseAndSaveContractDetails() {
-        System.out.println("Начало парсинга деталей контрактов...");
+        updateStatus("Начало парсинга деталей контрактов...");
         ContractExtractor extractor = new ContractExtractor(4);
         extractor.extractAllContracts();
 
@@ -83,9 +101,9 @@ public class ContractParser {
 
         if (!contractsToSave.isEmpty()) {
             DataBaseServices.batchProcessContracts(contractsToSave);
-            System.out.println("Успешно сохранено контрактов: " + contractsToSave.size());
+            updateStatus("Успешно сохранено контрактов: " + contractsToSave.size());
         } else {
-            System.out.println("Нет контрактов для сохранения");
+            updateStatus("Нет контрактов для сохранения");
         }
     }
 
@@ -94,6 +112,11 @@ public class ContractParser {
         List<Contract> contracts = contractUploader.uploadContracts(contractsData); // передаем весь Map
 
         return contracts;
+    }
+
+    private void updateStatus(String message) {
+        System.out.println(message); // Для логов в консоли оставим
+        SwingUtilities.invokeLater(() -> statusParser.setText(message));
     }
 
 

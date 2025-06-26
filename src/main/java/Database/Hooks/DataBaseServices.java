@@ -25,6 +25,25 @@ public class DataBaseServices {
         }
     }
 
+    public static Date getLastParsingDate() {
+        try (Session session = HibernateUtil.getSessionFactory().openSession()) {
+            Contract firstContract = session.createQuery("from Contract", Contract.class)
+                    .setMaxResults(1)
+                    .uniqueResult();
+
+            if (firstContract != null) {
+                return firstContract.getLastParsingUpdate();
+            } else {
+                System.out.println("Нет записей в таблице Contract.");
+                return null;
+            }
+        } catch (Exception e) {
+            System.err.println("Ошибка при получении даты последнего парсинга:");
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     // Update an existing contract
     public static void updateContract(Contract contract) {
         Transaction transaction = null;

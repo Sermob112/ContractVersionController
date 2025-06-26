@@ -49,7 +49,6 @@ public class JournalLinksExtractorMultithreaded {
         try {
             driver.get(link);
 
-            // Явное ожидание полной загрузки DOM
             new WebDriverWait(driver, Duration.ofSeconds(20))
                     .until(webDriver -> ((JavascriptExecutor) webDriver)
                             .executeScript("return document.readyState").equals("complete"));
@@ -60,28 +59,34 @@ public class JournalLinksExtractorMultithreaded {
 
             List<WebElement> rows = table.findElement(By.tagName("tbody")).findElements(By.tagName("tr"));
 
-            int limit = Math.min(2, rows.size());
-            for (int i = 0; i < limit; i++) {
+            for (WebElement row : rows) {
                 try {
-                    WebElement row = rows.get(i);
-                    WebElement linkElement = row.findElement(By.cssSelector("td a"));
-                    String href = linkElement.getAttribute("href");
+                    // Ищем только <a> внутри первой <td>
+                    WebElement firstCell = row.findElement(By.tagName("td"));
+                    List<WebElement> links = firstCell.findElements(By.tagName("a"));
 
-                    if (href != null && !href.trim().isEmpty()) {
-                        resultSet.add(href);
-                        System.out.println("[✓] " + href);
+                    for (WebElement a : links) {
+                        String href = a.getAttribute("href");
+                        if (href != null && href.contains("/epz/contract/contractCard/common-info.html")) {
+                            String fullUrl = href.startsWith("http") ? href : "https://zakupki.gov.ru" + href;
+                            if (resultSet.add(fullUrl)) {
+                                System.out.println("[✓] " + fullUrl);
+                            }
+                        }
                     }
                 } catch (Exception e) {
-                    System.err.println("[!] Error extracting link from row in: " + link);
+                    System.err.println("[!] Ошибка в строке таблицы: " + e.getMessage());
                 }
             }
 
         } catch (Exception e) {
-            System.err.println("Failed to extract links from: " + link + " → " + e.getMessage());
+            System.err.println("Не удалось обработать ссылку " + link + ": " + e.getMessage());
         } finally {
             driver.quit();
         }
     }
+
+
 
     private List<String> readLinksFromFile() {
         try {

@@ -66,7 +66,7 @@ public class ParseUrls {
     /**
      * Заменяет параметр pageNumber в URL или добавляет его, если его нет.
      */
-    public String replacePageNumberInUrl(String url, int newPageNumber) {
+    public static String replacePageNumberInUrl(String url, int newPageNumber) {
         if (url.contains("pageNumber=")) {
             // Если pageNumber уже есть, заменяем его значение
             return url.replaceAll("pageNumber=\\d+", "pageNumber=" + newPageNumber);
