@@ -75,7 +75,7 @@ public class ContractParser {
 
     private void parseContractVersions() {
         updateStatus("Начало парсинга версий контрактов...");
-        VersionUrlParser parser = new VersionUrlParser();
+        VersionUrlParser parser = new VersionUrlParser(progressBar, statusParser);
         parser.processAllContractLinksMultithreaded(4);
         updateStatus("Парсинг версий контрактов завершен");
     }
@@ -85,7 +85,9 @@ public class ContractParser {
         JournalLinksExtractorMultithreaded extractor = new JournalLinksExtractorMultithreaded(
                 "event_journal_links.txt",
                 "contract_detail_links.txt",
-                4
+                4,
+                progressBar,
+                statusParser
         );
         extractor.processAllJournalPages();
         updateStatus("Извлечение ссылок из журналов завершено");
@@ -93,7 +95,7 @@ public class ContractParser {
 
     private void parseAndSaveContractDetails() {
         updateStatus("Начало парсинга деталей контрактов...");
-        ContractExtractor extractor = new ContractExtractor(4);
+        ContractExtractor extractor = new ContractExtractor(4, progressBar, statusParser); // передаём GUI
         extractor.extractAllContracts();
 
         Map<String, Map<String, String>> contractsData = extractor.getContractsData();
@@ -106,6 +108,7 @@ public class ContractParser {
             updateStatus("Нет контрактов для сохранения");
         }
     }
+
 
     private List<Contract> convertToContractEntities(Map<String, Map<String, String>> contractsData) {
         ContractUploader contractUploader = new ContractUploader();

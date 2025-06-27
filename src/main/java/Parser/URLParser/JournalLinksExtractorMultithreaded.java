@@ -3,11 +3,13 @@ package Parser.URLParser;
 import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.*;
 
+import javax.swing.*;
 import java.io.IOException;
 import java.nio.file.*;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 public class JournalLinksExtractorMultithreaded {
@@ -15,21 +17,36 @@ public class JournalLinksExtractorMultithreaded {
     private final String inputFilePath;
     private final String outputFilePath;
     private final int threadCount;
+    private final JProgressBar progressBar;
+    private final JLabel statusLabel;
 
-    public JournalLinksExtractorMultithreaded(String inputFilePath, String outputFilePath, int threadCount) {
+    public JournalLinksExtractorMultithreaded(String inputFilePath, String outputFilePath, int threadCount,
+                                              JProgressBar progressBar, JLabel statusLabel) {
         this.inputFilePath = inputFilePath;
         this.outputFilePath = outputFilePath;
         this.threadCount = threadCount;
+        this.progressBar = progressBar;
+        this.statusLabel = statusLabel;
     }
 
     public void processAllJournalPages() {
         List<String> journalLinks = readLinksFromFile();
         Set<String> extractedLinks = ConcurrentHashMap.newKeySet();
+        AtomicInteger processedCount = new AtomicInteger(0);
+        int total = journalLinks.size();
+
+        updateProgress(0, total);
 
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
         for (String link : journalLinks) {
-            executor.submit(() -> processLink(link, extractedLinks));
+            executor.submit(() -> {
+                processLink(link, extractedLinks);
+
+                int done = processedCount.incrementAndGet();
+                updateProgress(done, total);
+                updateStatus("Обработано журналов: " + done + " из " + total);
+            });
         }
 
         executor.shutdown();
@@ -37,7 +54,7 @@ public class JournalLinksExtractorMultithreaded {
             executor.awaitTermination(30, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.err.println("Thread pool interrupted.");
+            updateStatus("Обработка прервана!");
         }
 
         writeLinksToFile(new ArrayList<>(extractedLinks));
@@ -112,4 +129,22 @@ public class JournalLinksExtractorMultithreaded {
             System.err.println("Error writing output file: " + e.getMessage());
         }
     }
+
+    private void updateStatus(String message) {
+        System.out.println(message);
+        if (statusLabel != null) {
+            SwingUtilities.invokeLater(() -> statusLabel.setText(message));
+        }
+    }
+
+    private void updateProgress(int current, int total) {
+        if (progressBar != null) {
+            SwingUtilities.invokeLater(() -> {
+                progressBar.setMaximum(total);
+                progressBar.setValue(current);
+                progressBar.setStringPainted(true);
+            });
+        }
+    }
+
 }

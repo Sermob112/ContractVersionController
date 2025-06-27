@@ -6,11 +6,13 @@ import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.support.ui.*;
 
+import javax.swing.*;
 import java.io.IOException;
 import java.nio.file.*;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -20,18 +22,30 @@ public class ContractExtractor {
     private final String inputFilePath = "contract_detail_links.txt";
     private final int threadCount;
     private final Map<String, Map<String, String>> contractsData = new ConcurrentHashMap<>();
-
-    public ContractExtractor(int threadCount) {
+    private final JProgressBar progressBar;
+    private final JLabel statusLabel;
+    public ContractExtractor(int threadCount, JProgressBar progressBar, JLabel statusLabel) {
         this.threadCount = threadCount;
+        this.progressBar = progressBar;
+        this.statusLabel = statusLabel;
     }
 
     public void extractAllContracts() {
         List<String> contractLinks = readLinksFromFile();
+        int total = contractLinks.size();
+        AtomicInteger processed = new AtomicInteger(0);
+
+        updateProgress(0, total);
 
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
 
         for (String link : contractLinks) {
-            executor.submit(() -> extractContractData(link));
+            executor.submit(() -> {
+                extractContractData(link);
+                int done = processed.incrementAndGet();
+                updateProgress(done, total);
+                updateStatus("Обработано контрактов: " + done + " из " + total);
+            });
         }
 
         executor.shutdown();
@@ -39,7 +53,7 @@ public class ContractExtractor {
             executor.awaitTermination(30, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.err.println("Thread pool interrupted.");
+            updateStatus("Обработка прервана");
         }
 
         printCollectedData();
@@ -209,6 +223,23 @@ public class ContractExtractor {
         } catch (IOException e) {
             System.err.println("Ошибка чтения файла с ссылками: " + e.getMessage());
             return Collections.emptyList();
+        }
+    }
+
+    private void updateStatus(String message) {
+        System.out.println(message);
+        if (statusLabel != null) {
+            SwingUtilities.invokeLater(() -> statusLabel.setText(message));
+        }
+    }
+
+    private void updateProgress(int current, int total) {
+        if (progressBar != null) {
+            SwingUtilities.invokeLater(() -> {
+                progressBar.setMaximum(total);
+                progressBar.setValue(current);
+                progressBar.setStringPainted(true);
+            });
         }
     }
 }
