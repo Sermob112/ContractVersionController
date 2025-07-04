@@ -4,8 +4,11 @@ package Parser;
 
 import Database.Hooks.DataBaseServices;
 import Database.Models.Contract;
+import Database.Models.ProcurementObject;
 import Parser.DataHooks.ContractExtractor;
 import Parser.DataHooks.ContractUploader;
+import Parser.ProcurementObject.LinkTransformer;
+import Parser.ProcurementObject.ProcurementExtractor;
 import Parser.URLParser.*;
 
 import javax.swing.*;
@@ -95,12 +98,19 @@ public class ContractParser {
         Map<String, Object> contractsDataBody = extractor.getContractsDataBody();
         List<Contract> contractsToSave = convertToContractEntities(contractsData, contractsDataBody);
 
+        LinkTransformer   linkTransformer = new LinkTransformer();
+        linkTransformer.transformLinks();
+
+        ProcurementExtractor procurementExtractor = new ProcurementExtractor(4, progressBar, statusParser);
+        procurementExtractor.extractAllProcurements();
+
         if (!contractsToSave.isEmpty()) {
             DataBaseServices.batchProcessContracts(contractsToSave);
             updateStatus("Успешно сохранено контрактов: " + contractsToSave.size());
         } else {
             updateStatus("Нет контрактов для сохранения");
         }
+
     }
 
 

@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "contracts")
@@ -396,6 +398,17 @@ public class Contract {
 
     @Column(name = "delivery_place_info", columnDefinition = "TEXT")
     private String deliveryPlaceInfo;
+    @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProcurementObject> procurementObjects = new ArrayList<>();
+
+    
+    public List<ProcurementObject> getProcurementObjects() {
+        return procurementObjects;
+    }
+
+    public void setProcurementObjects(List<ProcurementObject> procurementObjects) {
+        this.procurementObjects = procurementObjects;
+    }
 
 
 

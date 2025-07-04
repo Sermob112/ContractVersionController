@@ -118,7 +118,9 @@ public class HibernateUtil {
         try {
             StandardServiceRegistry registry = registryBuilder.build();
             MetadataSources sources = new MetadataSources(registry)
-                    .addAnnotatedClass(Database.Models.Contract.class);
+                    .addAnnotatedClass(Database.Models.Contract.class)
+                    .addAnnotatedClass(Database.Models.ProcurementObject.class);
+
 
 
             Metadata metadata = sources.getMetadataBuilder().build();
