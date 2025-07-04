@@ -47,7 +47,7 @@ public class HibernateUtil {
                         localConfig.put("PORT", "5432");
                         localConfig.put("DB_Global_Module", config.getString("DB_Global_Module"));
                         localConfig.put("USER", "postgres");
-                        localConfig.put("PASSWORD", ""); // или ваш пароль для локальной БД
+                        localConfig.put("PASSWORD", "sa"); // или ваш пароль для локальной БД
 
                         // Для локальной БД принудительно устанавливаем hbm2ddl.auto=update
                         localConfig.put("HBM2DDL_AUTO", "update");

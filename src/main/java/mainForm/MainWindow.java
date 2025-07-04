@@ -6,6 +6,7 @@ import Parser.ContractParser;
 import javax.swing.*;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.Date;
 
 public class MainWindow {
@@ -18,7 +19,7 @@ public class MainWindow {
     private JProgressBar ProgressBar;
 
     public MainWindow() {
-        Date lastUpdate = DataBaseServices.getLastParsingDate();
+        LocalDate lastUpdate = DataBaseServices.getLastParsingDate();
 
         if (lastUpdate != null) {
             DateFormat df = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss");

@@ -5,6 +5,9 @@ import Database.Models.Contract;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
+
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 
@@ -25,7 +28,7 @@ public class DataBaseServices {
         }
     }
 
-    public static Date getLastParsingDate() {
+    public static LocalDate getLastParsingDate() {
         try (Session session = HibernateUtil.getSessionFactory().openSession()) {
             Contract firstContract = session.createQuery("from Contract", Contract.class)
                     .setMaxResults(1)
@@ -69,16 +72,18 @@ public class DataBaseServices {
             existing.setContractNumber(contract.getContractNumber());
             existing.setPurchaseObjects(contract.getPurchaseObjects());
             existing.setContractPrice(contract.getContractPrice());
-            existing.setContractConclusion(contract.getContractConclusion());
+            existing.setConclusionDate(contract.getConclusionDate());
             existing.setExecutionPeriod(contract.getExecutionPeriod());
             existing.setPostedDate(contract.getPostedDate());
             existing.setUpdatedDate(contract.getUpdatedDate());
             existing.setVersion(contract.getVersion());
-            existing.setLastParsingUpdate(new Date()); // Update parsing timestamp
+            existing.setLastParsingUpdate(
+                    new Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
+            ); // Update parsing timestamp
 
             updateContract(existing);
         } else {
-            contract.setLastParsingUpdate(new Date());
+            contract.setLastParsingUpdate( new Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
             addContract(contract);
         }
     }
@@ -107,27 +112,53 @@ public class DataBaseServices {
                 Contract existing = findContractByNoticeNumber(contract.getNoticeNumber());
 
                 if (existing != null) {
-                    // Update existing
+                    // Обновление существующего контракта
+                    // Старые поля
                     existing.setContractStatus(contract.getContractStatus());
                     existing.setCustomer(contract.getCustomer());
                     existing.setContractNumber(contract.getContractNumber());
                     existing.setPurchaseObjects(contract.getPurchaseObjects());
                     existing.setContractPrice(contract.getContractPrice());
-                    existing.setContractConclusion(contract.getContractConclusion());
+                    existing.setConclusionDate(contract.getConclusionDate());
                     existing.setExecutionPeriod(contract.getExecutionPeriod());
                     existing.setPostedDate(contract.getPostedDate());
                     existing.setUpdatedDate(contract.getUpdatedDate());
                     existing.setVersion(contract.getVersion());
-                    existing.setLastParsingUpdate(new Date());
+
+                    // Новые поля
+                    existing.setRegistryNumber(contract.getRegistryNumber());
+                    existing.setStatus(contract.getStatus());
+                    existing.setProcurementNoticeNumber(contract.getProcurementNoticeNumber());
+                    existing.setProcurementIdentificationCode(contract.getProcurementIdentificationCode());
+                    existing.setElectronicContractId(contract.getElectronicContractId());
+                    existing.setSoleSupplierBasis(contract.getSoleSupplierBasis());
+                    existing.setSoleSupplierDocumentDetails(contract.getSoleSupplierDocumentDetails());
+                    existing.setBankingTreasurySupportInfo(contract.getBankingTreasurySupportInfo());
+                    existing.setSubject(contract.getSubject());
+                    existing.setIncludingVat(contract.getIncludingVat());
+                    existing.setCurrency(contract.getCurrency());
+                    existing.setStartDate(contract.getStartDate());
+                    existing.setEndDate(contract.getEndDate());
+                    existing.setContractStageId(contract.getContractStageId());
+                    existing.setAdvanceAmount(contract.getAdvanceAmount());
+                    existing.setPenaltyDeductionApplied(contract.getPenaltyDeductionApplied());
+                    existing.setAdditionalInfo(contract.getAdditionalInfo());
+                    existing.setTreasuryGuaranteeAmount(contract.getTreasuryGuaranteeAmount());
+                    existing.setNationalRegimeInfo(contract.getNationalRegimeInfo());
+                    existing.setContractGuaranteeInfo(contract.getContractGuaranteeInfo());
+                    existing.setQualityGuaranteeInfo(contract.getQualityGuaranteeInfo());
+                    existing.setDeliveryPlaceInfo(contract.getDeliveryPlaceInfo());
+
+                    existing.setLastParsingUpdate(new Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
 
                     session.merge(existing);
                 } else {
-                    // Add new
-                    contract.setLastParsingUpdate(new Date());
+                    // Добавление нового контракта
+                    contract.setLastParsingUpdate(new Date().toInstant().atZone(ZoneId.systemDefault()).toLocalDate());
                     session.persist(contract);
                 }
 
-                // Flush and clear session periodically to manage memory
+                // Периодическая очистка сессии для управления памятью
                 if (i % 50 == 0) {
                     session.flush();
                     session.clear();

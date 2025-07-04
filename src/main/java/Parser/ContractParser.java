@@ -7,16 +7,9 @@ import Database.Models.Contract;
 import Parser.DataHooks.ContractExtractor;
 import Parser.DataHooks.ContractUploader;
 import Parser.URLParser.*;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityTransaction;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.Persistence;
 
 import javax.swing.*;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class ContractParser {
     private final JProgressBar progressBar;
@@ -30,19 +23,19 @@ public class ContractParser {
 
         try {
 
-            // 1. Парсинг списка контрактов (многостраничный)
-            boolean linksParsed = parseContractLinks(); // теперь получаем результат
-
-            if (linksParsed) {
-                // Если парсили ссылки, значит нужно заново парсить версии
-                // 2. Парсинг версий контрактов
-                parseContractVersions();
-            } else {
-                updateStatus("Пропуск парсинга версий контрактов (ссылки не обновлялись)");
-            }
+////             1. Парсинг списка контрактов (многостраничный)
+//            boolean linksParsed = parseContractLinks(); // теперь получаем результат
 //
-            // 3. Извлечение ссылок из журналов
-            extractJournalLinks();
+//            if (linksParsed) {
+//                // Если парсили ссылки, значит нужно заново парсить версии
+//                // 2. Парсинг версий контрактов
+//                parseContractVersions();
+//            } else {
+//                updateStatus("Пропуск парсинга версий контрактов (ссылки не обновлялись)");
+//            }
+////
+//            // 3. Извлечение ссылок из журналов
+//            extractJournalLinks();
 
             // 4. Парсинг деталей контрактов и сохранение в БД
             parseAndSaveContractDetails();
@@ -98,8 +91,9 @@ public class ContractParser {
         ContractExtractor extractor = new ContractExtractor(4, progressBar, statusParser); // передаём GUI
         extractor.extractAllContracts();
 
-        Map<String, Map<String, String>> contractsData = extractor.getContractsData();
-        List<Contract> contractsToSave = convertToContractEntities(contractsData);
+        Map<String, Map<String, String>> contractsData = extractor.getContractsDataHead();
+        Map<String, Object> contractsDataBody = extractor.getContractsDataBody();
+        List<Contract> contractsToSave = convertToContractEntities(contractsData, contractsDataBody);
 
         if (!contractsToSave.isEmpty()) {
             DataBaseServices.batchProcessContracts(contractsToSave);
@@ -110,9 +104,10 @@ public class ContractParser {
     }
 
 
-    private List<Contract> convertToContractEntities(Map<String, Map<String, String>> contractsData) {
+    private List<Contract> convertToContractEntities(Map<String, Map<String, String>> contractsData, Map<String, Object> contractsDataBody) {
         ContractUploader contractUploader = new ContractUploader();
-        List<Contract> contracts = contractUploader.uploadContracts(contractsData); // передаем весь Map
+        List<Contract> contracts = contractUploader.uploadAndFillContracts(contractsData, contractsDataBody);
+        // передаем весь Map
 
         return contracts;
     }
